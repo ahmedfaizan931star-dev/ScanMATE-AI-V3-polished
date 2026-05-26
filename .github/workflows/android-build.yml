@@ -6,25 +6,17 @@ on:
     branches:
       - main
       - master
-  pull_request:
-    branches:
-      - main
-      - master
 
 permissions:
   contents: read
 
-concurrency:
-  group: android-build-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build:
-    name: Build Debug APK, Release APK, and Release AAB
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8 -Xmx4096m"
       GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8"
       VERSION_CODE: ${{ github.run_number }}
@@ -39,37 +31,26 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install required Android SDK packages
+      - name: Install Android SDK packages
         run: |
-          set -e
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Set up Gradle cache
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Validate Android project structure
+      - name: Validate project
         run: |
-          set -e
           test -f settings.gradle.kts
           test -f build.gradle.kts
           test -f gradlew
           test -d app
           test -f app/build.gradle.kts
-          test -d gradle
           test -f gradle/libs.versions.toml
-          test -f gradle/wrapper/gradle-wrapper.properties
 
-      - name: Make Gradle wrapper executable
+      - name: Make Gradle executable
         run: chmod +x ./gradlew
-
-      - name: Print Gradle version
-        run: ./gradlew --version --no-daemon
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
